@@ -15,11 +15,17 @@ const viewports = [
 ];
 
 async function run() {
-  console.log('Testing responsive rendering across 6 viewports with Chrome headless...');
-  const server = spawn('node', ['server/index.js'], { stdio: 'inherit' });
-
-  // Wait 3 seconds for server
-  await new Promise(r => setTimeout(r, 3000));
+  console.log('Testing responsive rendering across 6 viewports with Chrome...');
+  let server = null;
+  
+  // Check if server is already running
+  try {
+    const res = await fetch('http://localhost:3000/healthz');
+    if (!res.ok) throw new Error('Not ok');
+  } catch (_) {
+    server = spawn('node', ['server/index.js'], { stdio: 'inherit' });
+    await new Promise(r => setTimeout(r, 2000));
+  }
 
   const outDir = path.join(__dirname, 'screenshots');
   if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
@@ -35,7 +41,7 @@ async function run() {
     }
     console.log('All responsive viewports verified successfully!');
   } finally {
-    server.kill();
+    if (server) server.kill();
   }
 }
 

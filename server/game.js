@@ -467,6 +467,7 @@ class Room {
       round: this.round,
       maxRounds: this.maxRounds,
       roundTime: this.roundTime,
+      wordPack: this.wordPack,
       timeLeft: this.timeLeft,
       currentDrawer: currentDrawer ? {
         sessionToken: currentDrawer.sessionToken,

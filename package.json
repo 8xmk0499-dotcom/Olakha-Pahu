@@ -9,10 +9,13 @@
   },
   "scripts": {
     "start": "node server/index.js",
-    "test": "node --test server/test/game.test.js"
+    "test": "node --test server/test/game.test.js server/test/e2e.test.js"
   },
   "dependencies": {
     "express": "^4.21.2",
     "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.4"
   }
 }

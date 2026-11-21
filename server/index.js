@@ -92,6 +92,8 @@ function wireRoomEvents(room) {
   };
 
   room.onTurnEnd = (reason) => {
+    // Automatically clear drawing screen when turn ends!
+    io.to(room.code).emit('draw_clear');
     broadcastRoomState(room);
     io.to(room.code).emit('turn_ended', {
       reason,
@@ -107,6 +109,7 @@ function wireRoomEvents(room) {
   };
 
   room.onGameOver = () => {
+    io.to(room.code).emit('draw_clear');
     broadcastRoomState(room);
     // Sort winners by score descending
     const leaderboard = room.getAllPlayers()
@@ -117,6 +120,9 @@ function wireRoomEvents(room) {
   };
 
   room.onStateChange = (event) => {
+    if (event === 'next_turn' || event === 'word_auto_selected' || event === 'reset_lobby') {
+      io.to(room.code).emit('draw_clear');
+    }
     broadcastRoomState(room);
   };
 }
@@ -237,6 +243,7 @@ io.on('connection', (socket) => {
 
     const success = room.selectWord(currentSessionToken, data?.wordId);
     if (success) {
+      io.to(room.code).emit('draw_clear');
       broadcastRoomState(room);
       io.to(room.code).emit('drawing_started', {
         drawerName: room.players.get(room.currentDrawerToken)?.name

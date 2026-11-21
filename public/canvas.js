@@ -40,6 +40,15 @@ class DrawingCanvas {
     // Listen to window resize / orientation change
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 100));
+
+    // Dynamic layout observer for mobile orientation & view toggling
+    if (typeof ResizeObserver !== 'undefined') {
+      const parentEl = this.canvas.parentElement || this.canvas;
+      this.resizeObserver = new ResizeObserver(() => {
+        this.resize();
+      });
+      this.resizeObserver.observe(parentEl);
+    }
   }
 
   setInteractive(canDraw) {
@@ -115,7 +124,6 @@ class DrawingCanvas {
 
     this.canvas.addEventListener('pointerup', stopHandler);
     this.canvas.addEventListener('pointercancel', stopHandler);
-    this.canvas.addEventListener('pointerleave', stopHandler);
   }
 
   startDrawing(e) {
@@ -297,11 +305,11 @@ class DrawingCanvas {
     if (this.onRedo) this.onRedo(restored);
   }
 
-  clear() {
+  clear(broadcast = true) {
     this.strokes = [];
     this.undoStack = [];
     this.redrawAll();
-    if (this.onClear) this.onClear();
+    if (broadcast && this.onClear) this.onClear();
   }
 
   applyRemoteUndo(strokeId) {

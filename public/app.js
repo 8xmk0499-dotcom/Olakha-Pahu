@@ -72,6 +72,8 @@
   let isHost = false;
   let isDrawer = false;
   let hasGuessed = false;
+  let lastDrawerToken = null;
+  let lastRoundNumber = 0;
 
   const AVATARS = ['👨‍🎨', '🦊', '🦁', '🐯', '🐵', '🐼', '🦄', '🧙‍♂️', '🦚', '🐘', '👑', '😎'];
   const COLORS = [
@@ -148,6 +150,7 @@
 
     socket.on('drawing_started', (data) => {
       closeWordPickerModal();
+      if (canvasEngine) canvasEngine.clear(false);
       showToast(`🎨 ${data.drawerName} ${window.i18n.get('drawerIsDrawing')}`);
       if (window.soundEngine) window.soundEngine.playStart();
     });
@@ -201,12 +204,15 @@
     });
 
     socket.on('turn_ended', (data) => {
+      // Turn ended: automatically clear canvas screen for all players
+      if (canvasEngine) canvasEngine.clear(false);
       if (data.word) {
         showToast(`${window.i18n.get('theWordWas')} ${data.word.mr} (${data.word.en})`);
       }
     });
 
     socket.on('game_over', (data) => {
+      if (canvasEngine) canvasEngine.clear(false);
       handleGameOver(data.leaderboard);
     });
 
@@ -232,7 +238,7 @@
     });
 
     socket.on('draw_clear', () => {
-      if (canvasEngine) canvasEngine.clear();
+      if (canvasEngine) canvasEngine.clear(false);
     });
 
     socket.on('canvas_sync', (data) => {
@@ -290,13 +296,25 @@
     const me = state.players.find(p => p.sessionToken === sessionToken);
     if (me) isHost = me.isHost;
 
+    // Automatically clear canvas if drawer changed or entering word selection
+    const activeDrawerToken = state.currentDrawer?.sessionToken;
+    if (state.state === 'SELECTING_WORD' || (activeDrawerToken && activeDrawerToken !== lastDrawerToken) || (state.round && state.round !== lastRoundNumber)) {
+      if (canvasEngine && state.state !== 'ROUND_END') {
+        canvasEngine.clear(false);
+      }
+    }
+    lastDrawerToken = activeDrawerToken;
+    lastRoundNumber = state.round;
+
     if (state.state === 'LOBBY') {
+      if (canvasEngine) canvasEngine.clear(false);
       showScreen('lobby');
       renderLobby(state);
     } else if (state.state === 'SELECTING_WORD' || state.state === 'DRAWING' || state.state === 'ROUND_END') {
       showScreen('game');
       renderGameScreen(state);
     } else if (state.state === 'GAME_OVER') {
+      if (canvasEngine) canvasEngine.clear(false);
       showScreen('gameover');
     }
   }
@@ -326,9 +344,18 @@
       `).join('');
     }
 
-    // Host controls
-    if (lobbyHostSettings) {
-      lobbyHostSettings.style.display = isHost ? 'flex' : 'none';
+    // Host controls & Settings synchronization
+    if (selectRoundTime) {
+      selectRoundTime.value = String(state.roundTime || 80);
+      selectRoundTime.disabled = !isHost;
+    }
+    if (selectRounds) {
+      selectRounds.value = String(state.maxRounds || 3);
+      selectRounds.disabled = !isHost;
+    }
+    if (selectWordPack) {
+      selectWordPack.value = state.wordPack || 'all';
+      selectWordPack.disabled = !isHost;
     }
 
     if (btnStartGame) {
@@ -408,6 +435,9 @@
         inputGuess.disabled = false;
         inputGuess.placeholder = window.i18n.get('guessPlaceholder');
       }
+    }
+    if (btnSubmitGuess) {
+      btnSubmitGuess.disabled = Boolean(state.isDrawer || hasGuessed || state.state !== 'DRAWING');
     }
   }
 
@@ -571,6 +601,29 @@
 
   // --- Bind All Events ---
   function bindEvents() {
+    // Keyboard Enter keys on inputs
+    if (inputPlayerName) {
+      inputPlayerName.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          if (inputRoomCode?.value.trim()) {
+            btnJoinRoom?.click();
+          } else {
+            btnCreateRoom?.click();
+          }
+        }
+      });
+    }
+
+    if (inputRoomCode) {
+      inputRoomCode.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btnJoinRoom?.click();
+        }
+      });
+    }
+
     // 1. Create Room
     if (btnCreateRoom) {
       btnCreateRoom.addEventListener('click', () => {
